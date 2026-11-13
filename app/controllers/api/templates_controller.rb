@@ -2,7 +2,16 @@
 
 module Api
   class TemplatesController < ApiBaseController
-    load_and_authorize_resource :template
+    CreationError = Class.new(StandardError)
+
+    load_and_authorize_resource :template, except: %i[html pdf docx]
+    before_action :build_template, only: %i[html pdf docx]
+
+    rescue_from CreationError, Templates::HtmlToPdf::Error, Templates::CreateAttachments::InvalidFileType,
+                Templates::CreateAttachments::PdfEncrypted, DownloadUtils::UnableToDownload,
+                Pdfium::PdfiumError do |e|
+      render json: { error: e.message }, status: :unprocessable_content
+    end
 
     def index
       @templates = Templates.shared(current_user) if params[:shared].in?(['true', true])
@@ -79,7 +88,235 @@ module Api
       render json: @template.as_json(only: %i[id archived_at])
     end
 
+    def html
+      create_from_html
+    end
+
+    def pdf
+      create_from_documents(:pdf)
+    end
+
+    def docx
+      create_from_documents(:docx)
+    end
+
     private
+
+    def build_template
+      @template = current_account.templates.new(
+        author: current_user,
+        source: 'api',
+        name: params[:name].presence || SecureRandom.uuid,
+        external_id: params[:external_id],
+        shared_link: params[:shared_link] != false,
+        fields: [],
+        schema: []
+      )
+
+      if params[:folder_name].present?
+        @template.folder = TemplateFolders.find_or_create_by_name(current_user, params[:folder_name])
+      end
+
+      authorize!(:create, @template)
+
+      Templates.maybe_assign_access(@template)
+
+      @template.save!
+    end
+
+    def create_from_html
+      payloads = html_payloads
+
+      raise CreationError, 'html is required' if payloads.empty? || payloads.all? { |payload| payload[:html].blank? }
+
+      entries = []
+      schema = []
+
+      payloads.each do |payload|
+        pdf = Templates::HtmlToPdf.call(
+          payload[:html],
+          html_header: payload[:html_header],
+          html_footer: payload[:html_footer],
+          size: payload[:size].presence || 'Letter'
+        )
+
+        result = Templates::FieldTags.call(pdf, remove_tags: true, unit_scale: 0.75)
+        document = create_document!(result[:pdf], payload[:name].presence || params[:name].presence || 'Document')
+
+        entries.concat(attach_attachment_uuid(result[:entries], document.uuid))
+        schema << schema_item(document, payload[:name])
+      end
+
+      finalize_template!(entries, schema)
+    end
+
+    def create_from_documents(kind)
+      documents = Array.wrap(params[:documents])
+
+      raise CreationError, 'documents is required' if documents.empty?
+
+      entries = []
+      schema = []
+
+      documents.each do |document_params|
+        document_params = normalize_hash(document_params)
+
+        bytes = decode_file(document_params[:file])
+        pdf_bytes = kind == :docx ? convert_docx(bytes) : bytes
+
+        result = Templates::FieldTags.call(
+          pdf_bytes,
+          remove_tags: !false_value?(params[:remove_tags]),
+          unit_scale: 1.0
+        )
+
+        document = create_document!(result[:pdf], document_params[:name].presence || 'Document')
+
+        entries.concat(attach_attachment_uuid(result[:entries], document.uuid))
+        entries.concat(provided_field_entries(document_params[:fields], document.uuid))
+        schema << schema_item(document, document_params[:name])
+      end
+
+      finalize_template!(entries, schema)
+    end
+
+    def finalize_template!(entries, schema)
+      fields, submitters = Templates::FieldTags.build(entries, submitters: [])
+
+      @template.update!(fields:, submitters:, schema:)
+
+      WebhookUrls.enqueue_events(@template, 'template.created')
+      SearchEntries.enqueue_reindex(@template)
+
+      render json: Templates::SerializeForApi.call(@template.reload)
+    end
+
+    def html_payloads
+      documents = Array.wrap(params[:documents])
+
+      if documents.present?
+        documents.map do |document|
+          document = normalize_hash(document)
+
+          {
+            html: document[:html],
+            name: document[:name],
+            html_header: document[:html_header].presence || params[:html_header],
+            html_footer: document[:html_footer].presence || params[:html_footer],
+            size: document[:size].presence || params[:size]
+          }
+        end
+      else
+        [{
+          html: params[:html],
+          name: params[:name],
+          html_header: params[:html_header],
+          html_footer: params[:html_footer],
+          size: params[:size]
+        }]
+      end
+    end
+
+    def create_document!(pdf_bytes, name)
+      filename = "#{(name.presence || 'document').to_s.parameterize.presence || 'document'}.pdf"
+
+      file = ActionDispatch::Http::UploadedFile.new(
+        tempfile: StringIO.new(pdf_bytes),
+        filename:,
+        type: 'application/pdf'
+      )
+
+      documents, = Templates::CreateAttachments.call(@template, { files: [file] }, extract_fields: false)
+
+      documents.first || raise(CreationError, 'Unable to attach document')
+    end
+
+    def attach_attachment_uuid(entries, attachment_uuid)
+      entries.each { |entry| entry.area['attachment_uuid'] = attachment_uuid }
+
+      entries
+    end
+
+    def schema_item(document, name)
+      {
+        'attachment_uuid' => document.uuid,
+        'name' => name.presence || FilenameUtils.basename(document.blob[:filename])
+      }
+    end
+
+    def decode_file(value)
+      file = value.to_s.strip
+
+      raise CreationError, 'file is required' if file.blank?
+
+      if file.match?(%r{\Ahttps?://}i)
+        DownloadUtils.call(file, validate: true).body
+      else
+        Base64.decode64(file.sub(/\Adata:[^,]*,/, '').tr('-_', '+/'))
+      end
+    rescue DownloadUtils::UnableToDownload => e
+      raise CreationError, e.message
+    end
+
+    def convert_docx(bytes)
+      require 'wordcraft'
+
+      WordCraft.open_buffer(StringIO.new(bytes), &:to_pdf)
+    rescue StandardError => e
+      raise CreationError, "Invalid DOCX file: #{e.message}"
+    end
+
+    def provided_field_entries(fields, attachment_uuid)
+      Array.wrap(fields).flat_map do |field|
+        field = normalize_hash(field)
+        options = Array.wrap(field[:options]).map { |option| option.is_a?(Hash) ? option[:value] : option }
+
+        attributes = {
+          'name' => field[:name].to_s,
+          'type' => field[:type].presence || 'text',
+          'role' => field[:role].presence,
+          'required' => field[:required].to_s,
+          'readonly' => field[:readonly].to_s,
+          'title' => field[:title],
+          'description' => field[:description],
+          'default' => field[:default] || field[:default_value],
+          'options' => options.join(','),
+          'format' => field[:format],
+          'pattern' => field[:pattern],
+          'min' => field[:min],
+          'max' => field[:max]
+        }.compact
+
+        Array.wrap(field[:areas]).map do |area|
+          area = normalize_hash(area)
+
+          area_attributes = attributes.dup
+          area_attributes['option'] = area[:option] if area[:option].present?
+
+          Templates::FieldTags::Entry.new(
+            attributes: area_attributes,
+            area: {
+              'x' => area[:x].to_f,
+              'y' => area[:y].to_f,
+              'w' => area[:w].to_f,
+              'h' => area[:h].to_f,
+              'page' => [area[:page].to_i - 1, 0].max,
+              'attachment_uuid' => attachment_uuid
+            }
+          )
+        end
+      end
+    end
+
+    def false_value?(value)
+      value.in?([false, 'false', '0', 0])
+    end
+
+    def normalize_hash(value)
+      hash = value.respond_to?(:to_unsafe_h) ? value.to_unsafe_h : value.to_h
+
+      hash.with_indifferent_access
+    end
 
     def preload_relations(templates)
       schema_documents =

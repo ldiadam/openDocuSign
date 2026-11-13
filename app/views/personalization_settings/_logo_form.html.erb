@@ -1,1 +1,16 @@
-<%= render 'logo_placeholder' %>
+<% if current_account.logo.attached? %>
+  <div class="flex flex-wrap items-center gap-4 mb-4">
+    <img src="<%= ActiveStorage::Blob.proxy_path(current_account.logo.blob) %>" alt="<%= current_account.name %>" class="max-h-16 max-w-[200px] object-contain">
+    <%= button_to t('remove'), settings_logo_path, method: :delete, class: 'btn btn-outline btn-error btn-sm', data: { turbo_confirm: t('are_you_sure_') } %>
+  </div>
+<% end %>
+<%= form_for '', url: settings_logo_path, method: :post, html: { multipart: true, class: 'space-y-4' } do |f| %>
+  <div class="form-control">
+    <%= f.label :logo, t('company_logo'), class: 'label' %>
+    <%= f.file_field :logo, accept: 'image/png,image/jpeg,image/webp', required: true, class: 'base-input' %>
+    <span class="label-text-alt mt-2">PNG, JPEG or WebP. Max 2 MB.</span>
+  </div>
+  <div class="form-control pt-2">
+    <%= f.button button_title(title: t('save'), disabled_with: t('updating')), class: 'base-button' %>
+  </div>
+<% end %>

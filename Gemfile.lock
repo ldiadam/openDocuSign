@@ -623,6 +623,7 @@ DEPENDENCIES
   faker
   faraday
   faraday-follow_redirects
+  ferrum
   foreman
   google-cloud-storage
   hexapdf

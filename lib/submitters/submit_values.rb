@@ -259,16 +259,18 @@ module Submitters
       end
     end
 
-    def calculate_formula_value(_formula, _values, _submission)
-      0
+    def calculate_formula_value(formula, values, submission)
+      result = Formula.evaluate(formula, values, submission)
+
+      result.is_a?(Numeric) ? result : nil
     end
 
-    def calculate_date_formula_value(_formula, _values, _submission)
-      nil
+    def calculate_date_formula_value(formula, values, submission)
+      Formula.days_to_date(Formula.evaluate(formula, values, submission))
     end
 
-    def eval_text_formula_value(_formula, _values, _submission)
-      ''
+    def eval_text_formula_value(formula, values, submission)
+      Formula.evaluate_text(formula, values, submission)
     end
 
     def replace_current_date_placeholders(submitter)

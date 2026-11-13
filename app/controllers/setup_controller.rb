@@ -31,7 +31,8 @@ class SetupController < ApplicationController
     if @user.save
       encrypted_configs = [
         { key: EncryptedConfig::APP_URL_KEY, value: encrypted_config_params[:value] },
-        { key: EncryptedConfig::ESIGN_CERTS_KEY, value: GenerateCertificate.call.transform_values(&:to_pem) }
+        { key: EncryptedConfig::ESIGN_CERTS_KEY,
+          value: GenerateCertificate.call(@account.name, country: ENV.fetch('CERT_COUNTRY', 'AT')).transform_values(&:to_pem) }
       ]
       @account.encrypted_configs.create!(encrypted_configs)
       @account.account_configs.create!(key: :fulltext_search, value: true) if SearchEntry.table_exists?

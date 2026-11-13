@@ -49,11 +49,12 @@ FROM ruby:4.0.9-alpine AS app
 ENV RAILS_ENV=production
 ENV BUNDLE_WITHOUT="development:test"
 ENV OPENSSL_CONF=/etc/openssl_legacy.cnf
+ENV CHROME_BIN=/usr/bin/chromium-browser
 
 WORKDIR /app
 
 RUN apk upgrade --no-cache ca-certificates-bundle && \
-    apk add --no-cache libpq vips redis onnxruntime leptonica jemalloc font-liberation font-carlito && \
+    apk add --no-cache libpq vips redis onnxruntime leptonica jemalloc font-liberation font-carlito chromium && \
     rm -f /usr/bin/onnx_test_runner /usr/bin/onnxruntime_test
 
 RUN addgroup -g 2000 docuseal && adduser -u 2000 -G docuseal -s /bin/sh -D -h /home/docuseal docuseal

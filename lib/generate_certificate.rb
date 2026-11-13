@@ -7,11 +7,11 @@ module GenerateCertificate
 
   module_function
 
-  def call(name = Docuseal.product_name)
-    root_cert, root_key = generate_root_ca(name)
+  def call(name = Docuseal.product_name, country: 'AT')
+    root_cert, root_key = generate_root_ca(name, country)
 
-    sub_cert, sub_key = generate_sub_ca(name, root_cert, root_key)
-    cert, key = generate_certificate(name, sub_cert, sub_key)
+    sub_cert, sub_key = generate_sub_ca(name, country, root_cert, root_key)
+    cert, key = generate_certificate(name, country, sub_cert, sub_key)
 
     {
       cert:,
@@ -23,11 +23,11 @@ module GenerateCertificate
     }
   end
 
-  def generate_root_ca(name)
+  def generate_root_ca(name, country = 'AT')
     key = OpenSSL::PKey::RSA.new(SIZE)
 
     cert = OpenSSL::X509::Certificate.new
-    cert.subject = OpenSSL::X509::Name.parse("/C=AT/O=#{name}/CN=#{name} Root CA")
+    cert.subject = OpenSSL::X509::Name.parse("/C=#{country}/O=#{name}/CN=#{name} Root CA")
     cert.issuer = cert.subject
     cert.not_before = Time.current
     cert.not_after = 100.years.from_now
@@ -45,11 +45,11 @@ module GenerateCertificate
     [cert, key]
   end
 
-  def generate_sub_ca(name, root_ca_cert, root_ca_key)
+  def generate_sub_ca(name, country, root_ca_cert, root_ca_key)
     key = OpenSSL::PKey::RSA.new(SIZE)
 
     cert = OpenSSL::X509::Certificate.new
-    cert.subject = OpenSSL::X509::Name.parse("/C=AT/O=#{name}/CN=#{name} Sub-CA")
+    cert.subject = OpenSSL::X509::Name.parse("/C=#{country}/O=#{name}/CN=#{name} Sub-CA")
     cert.issuer = root_ca_cert.subject
     cert.not_before = Time.current
     cert.not_after = 100.years.from_now
@@ -67,11 +67,11 @@ module GenerateCertificate
     [cert, key]
   end
 
-  def generate_certificate(name, ca_cert, ca_key)
+  def generate_certificate(name, country, ca_cert, ca_key)
     key = OpenSSL::PKey::RSA.new(SIZE)
 
     cert = OpenSSL::X509::Certificate.new
-    cert.subject = OpenSSL::X509::Name.parse("/C=AT/O=#{name}/CN=#{name}")
+    cert.subject = OpenSSL::X509::Name.parse("/C=#{country}/O=#{name}/CN=#{name}")
     cert.issuer = ca_cert.subject
     cert.not_before = Time.current
     cert.not_after = 100.years.from_now

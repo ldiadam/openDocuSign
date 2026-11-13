@@ -1,1 +1,6 @@
-<%= render 'shared/logo', width: 40, height: 40 %>
+<% account = @submission&.account %>
+<% if account&.logo&.attached? %>
+  <img src="<%= ActiveStorage::Blob.proxy_path(account.logo.blob) %>" alt="<%= account.name %>" class="max-h-10 max-w-[160px] object-contain">
+<% else %>
+  <%= render 'shared/logo', width: 40, height: 40 %>
+<% end %>

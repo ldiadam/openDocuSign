@@ -194,6 +194,29 @@ module Submitters
       else
         SendSubmitterInvitationEmailJob.perform_async('submitter_id' => submitter.id)
       end
+
+      schedule_reminders(submitter, delay_seconds:)
+    end
+  end
+
+  def schedule_reminders(submitter, delay_seconds: nil)
+    return if submitter.email.blank?
+    return if submitter.viewer?
+    return if submitter.preferences['send_email'] == false
+    return if submitter.completed_at? || submitter.declined_at?
+
+    durations = AccountConfigs.reminder_durations(submitter.account)
+
+    return if durations.empty?
+
+    base_delay = delay_seconds.to_i
+
+    durations.each_with_index do |duration, index|
+      SendSubmitterReminderEmailJob.perform_in(
+        base_delay + duration.to_i,
+        'submitter_id' => submitter.id,
+        'index' => index
+      )
     end
   end
 

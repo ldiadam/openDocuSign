@@ -830,11 +830,15 @@ module Submissions
       io
     end
 
-    def build_signing_params(_submitter, pkcs, tsa_url)
+    def build_signing_params(submitter, pkcs, tsa_url)
+      timezone = submitter&.account&.timezone || Time.zone.name
+      local_time = Time.current.in_time_zone(timezone)
+
       params = {
         certificate: pkcs.certificate,
         key: pkcs.key,
-        certificate_chain: pkcs.ca_certs || []
+        certificate_chain: pkcs.ca_certs || [],
+        signing_time: Time.at(local_time.to_i).getlocal(local_time.utc_offset)
       }
 
       if tsa_url

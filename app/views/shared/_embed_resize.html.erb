@@ -1,0 +1,18 @@
+<% unless turbo_native_app? %>
+  <script nonce="<%= content_security_policy_nonce %>">
+    (() => {
+      if (window.parent === window) return
+
+      const notify = () => {
+        const height = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+
+        window.parent.postMessage({ type: 'docuseal:resize', height }, '*')
+      }
+
+      window.addEventListener('load', notify)
+      window.addEventListener('resize', notify)
+
+      if (window.ResizeObserver) new ResizeObserver(notify).observe(document.body)
+    })()
+  </script>
+<% end %>
