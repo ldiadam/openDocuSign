@@ -114,6 +114,8 @@ module Accounts
           Account.order(:id).first.encrypted_configs.find_by(key: EncryptedConfig::TIMESTAMP_SERVER_URL_KEY)&.value
       end
 
+      url ||= Docuseal::TIMESERVER_URL
+
       url
     end.presence
   end

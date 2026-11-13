@@ -50,6 +50,12 @@ ENV RAILS_ENV=production
 ENV BUNDLE_WITHOUT="development:test"
 ENV OPENSSL_CONF=/etc/openssl_legacy.cnf
 ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV PORT=3000
+ENV RAILS_MAX_THREADS=15
+ENV WEB_CONCURRENCY=0
+ENV SIDEKIQ_THREADS=5
+ENV CERT_COUNTRY=SG
+ENV TIMESERVER_URL=http://timestamp.digicert.com
 
 WORKDIR /app
 
@@ -104,6 +110,11 @@ ENV VIPS_MAX_COORD=17000
 ENV VIPS_BLOCK_UNTRUSTED=1
 # ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 ENV MALLOC_CONF=dirty_decay_ms:1000,narenas:2,background_thread:true
+
+VOLUME ["/data"]
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/up || exit 1
 
 EXPOSE 3000
 CMD ["/app/bin/bundle", "exec", "puma", "-C", "/app/config/puma.rb", "--dir", "/app"]
