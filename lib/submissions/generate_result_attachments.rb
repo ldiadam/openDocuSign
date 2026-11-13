@@ -34,7 +34,7 @@ module Submissions
       bold_italic: FONT_BOLD_NAME
     }.freeze
 
-    SIGN_REASON = 'Signed with DocuSeal.com'
+    SIGN_REASON = 'Signed with %{account}'
 
     UNSUPPORTED_IMAGE_TYPES = ['image/heic', 'image/avif'].freeze
 
@@ -767,7 +767,7 @@ module Submissions
     def build_pdf_attachment(pdf:, submitter:, pkcs:, tsa_url:, uuid:, name:)
       io = StringIO.new
 
-      pdf.trailer.info[:Creator] = info_creator
+      pdf.trailer.info[:Creator] = info_creator(submitter)
 
       if Docuseal.pdf_format == 'pdf/a-3b'
         pdfa_listener = pdf.task(:pdfa, level: '3b')
@@ -1017,20 +1017,15 @@ module Submissions
       HexaPDF::Document.new(io:)
     end
 
-    def sign_reason(name)
-      format(SIGN_REASON, name:)
+    def sign_reason(submitter)
+      format(SIGN_REASON, account: submitter.account.name)
     end
 
     def single_sign_reason(submitter)
-      signers = submitter.submission.submitters.reject(&:viewer?)
-                         .sort_by(&:completed_at).map { |s| s.email || s.name || s.phone }
-
-      format(SIGN_REASON, name: signers.reverse.join(', '))
+      format(SIGN_REASON, account: submitter.account.name)
     end
 
     def fetch_sign_reason(submitter)
-      reason_name = submitter.email || submitter.name || submitter.phone
-
       config =
         if Docuseal.multitenant?
           AccountConfig.where(account: submitter.account, key: AccountConfig::ESIGNING_PREFERENCE_KEY)
@@ -1040,7 +1035,7 @@ module Submissions
                        .first_or_initialize(value: 'single')
         end
 
-      return sign_reason(reason_name) if config.value == 'multiple'
+      return sign_reason(submitter) if config.value == 'multiple'
 
       if submitter.submission.completed_at? &&
          submitter.completed_at == submitter.submission.submitters.maximum(:completed_at)
@@ -1050,8 +1045,8 @@ module Submissions
       nil
     end
 
-    def info_creator
-      "#{Docuseal.product_name} (#{Docuseal::PRODUCT_URL})"
+    def info_creator(submitter)
+      submitter.account.name
     end
 
     def detached_signature?(_submitter)

@@ -44,11 +44,11 @@ module Submissions
 
         io = StringIO.new
 
-        document.trailer.info[:Creator] = "#{Docuseal.product_name} (#{Docuseal::PRODUCT_URL})"
+        document.trailer.info[:Creator] = account.name
 
         if pkcs
           sign_params = {
-            reason: sign_reason,
+            reason: sign_reason(account),
             **Submissions::GenerateResultAttachments.build_signing_params(last_submitter, pkcs, tsa_url)
           }
 
@@ -544,8 +544,8 @@ module Submissions
       composer.document
     end
 
-    def sign_reason
-      'Signed with DocuSeal.com'
+    def sign_reason(account)
+      "Signed with #{account.name}"
     end
 
     def select_attachments(submitter)
