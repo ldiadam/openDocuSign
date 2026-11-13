@@ -36,7 +36,6 @@ Rails.application.routes.draw do
     end
     resources :templates, only: %i[update show index destroy] do
       collection do
-        post :html
         post :pdf
         post :docx
       end

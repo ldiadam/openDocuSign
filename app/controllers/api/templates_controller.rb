@@ -4,10 +4,10 @@ module Api
   class TemplatesController < ApiBaseController
     CreationError = Class.new(StandardError)
 
-    load_and_authorize_resource :template, except: %i[html pdf docx]
-    before_action :build_template, only: %i[html pdf docx]
+    load_and_authorize_resource :template, except: %i[pdf docx]
+    before_action :build_template, only: %i[pdf docx]
 
-    rescue_from CreationError, Templates::HtmlToPdf::Error, Templates::CreateAttachments::InvalidFileType,
+    rescue_from CreationError, Templates::CreateAttachments::InvalidFileType,
                 Templates::CreateAttachments::PdfEncrypted, DownloadUtils::UnableToDownload,
                 Pdfium::PdfiumError do |e|
       render json: { error: e.message }, status: :unprocessable_content
@@ -88,10 +88,6 @@ module Api
       render json: @template.as_json(only: %i[id archived_at])
     end
 
-    def html
-      create_from_html
-    end
-
     def pdf
       create_from_documents(:pdf)
     end
@@ -122,32 +118,6 @@ module Api
       Templates.maybe_assign_access(@template)
 
       @template.save!
-    end
-
-    def create_from_html
-      payloads = html_payloads
-
-      raise CreationError, 'html is required' if payloads.empty? || payloads.all? { |payload| payload[:html].blank? }
-
-      entries = []
-      schema = []
-
-      payloads.each do |payload|
-        pdf = Templates::HtmlToPdf.call(
-          payload[:html],
-          html_header: payload[:html_header],
-          html_footer: payload[:html_footer],
-          size: payload[:size].presence || 'Letter'
-        )
-
-        result = Templates::FieldTags.call(pdf, remove_tags: true, unit_scale: 0.75)
-        document = create_document!(result[:pdf], payload[:name].presence || params[:name].presence || 'Document')
-
-        entries.concat(attach_attachment_uuid(result[:entries], document.uuid))
-        schema << schema_item(document, payload[:name])
-      end
-
-      finalize_template!(entries, schema)
     end
 
     def create_from_documents(kind)
@@ -189,32 +159,6 @@ module Api
       SearchEntries.enqueue_reindex(@template)
 
       render json: Templates::SerializeForApi.call(@template.reload)
-    end
-
-    def html_payloads
-      documents = Array.wrap(params[:documents])
-
-      if documents.present?
-        documents.map do |document|
-          document = normalize_hash(document)
-
-          {
-            html: document[:html],
-            name: document[:name],
-            html_header: document[:html_header].presence || params[:html_header],
-            html_footer: document[:html_footer].presence || params[:html_footer],
-            size: document[:size].presence || params[:size]
-          }
-        end
-      else
-        [{
-          html: params[:html],
-          name: params[:name],
-          html_header: params[:html_header],
-          html_footer: params[:html_footer],
-          size: params[:size]
-        }]
-      end
     end
 
     def create_document!(pdf_bytes, name)
