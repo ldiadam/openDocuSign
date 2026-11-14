@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class StartFormResubmitController < ApplicationController
+  include Embeddable
+
   layout 'form'
 
   skip_before_action :authenticate_user!

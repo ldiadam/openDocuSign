@@ -14,6 +14,8 @@ class DocusealEmbed extends HTMLElement {
 
     const url = new URL(src, window.location.href)
 
+    url.searchParams.set('embed', 'true')
+
     this.queryParam('email', 'email', url)
     this.queryParam('name', 'name', url)
     this.queryParam('phone', 'phone', url)

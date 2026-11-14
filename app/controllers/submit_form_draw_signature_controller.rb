@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 class SubmitFormDrawSignatureController < ApplicationController
+  include Embeddable
   layout false
 
   around_action :with_browser_locale, only: %i[show]

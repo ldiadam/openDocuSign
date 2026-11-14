@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class StartFormEmail2faSendController < ApplicationController
+  include Embeddable
+
   layout 'form'
 
   around_action :with_browser_locale

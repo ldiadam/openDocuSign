@@ -1,3 +1,5 @@
-<div class="flex mt-4">
-  <%= render 'submit_form/docuseal_logo' %>
-</div>
+<% unless embed_mode? %>
+  <div class="flex mt-4">
+    <%= render 'submit_form/docuseal_logo' %>
+  </div>
+<% end %>

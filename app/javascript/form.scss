@@ -71,6 +71,22 @@ button[disabled] .enabled, button.btn-disabled .enabled {
   @apply radio bg-white radio-sm;
 }
 
+body.embed-mode {
+  background: #fff;
+}
+
+body.embed-mode .max-w-md.mx-auto.mt-12 {
+  max-width: 42rem;
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+body.embed-mode .embed-attribution {
+  font-size: 0.7rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
 .font-times {
   font-family: "Times New Roman", Times, ui-serif, serif, Cambria, Georgia;
 }

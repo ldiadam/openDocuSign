@@ -1,1 +1,3 @@
-<%= render 'start_form/docuseal_logo' %>
+<% unless embed_mode? %>
+  <%= render 'start_form/docuseal_logo' %>
+<% end %>

@@ -25,7 +25,8 @@ class ApplicationController < ActionController::Base
                 :svg_icon,
                 :browser_os,
                 :turbo_native_ios?,
-                :turbo_native_android?
+                :turbo_native_android?,
+                :embed_mode?
 
   impersonates :user, with: ->(uuid) { User.find_by(uuid:) }
 
@@ -180,6 +181,10 @@ class ApplicationController < ActionController::Base
 
       policy.directives['connect-src'] << 'ws:' if Rails.env.development?
     end
+  end
+
+  def embed_mode?
+    params[:embed].to_s.in?(%w[true 1]) || request.headers['Sec-Fetch-Dest'] == 'iframe'
   end
 
   def embeddable_request?
