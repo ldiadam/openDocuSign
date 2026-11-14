@@ -120,6 +120,10 @@ module Docuseal
     PRODUCT_NAME
   end
 
+  def landing_brand_name
+    ENV.fetch('LANDING_BRAND_NAME', 'Generic Branding').presence
+  end
+
   def refresh_default_url_options!
     @default_url_options = nil
   end

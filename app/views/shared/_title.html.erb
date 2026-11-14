@@ -1,2 +1,8 @@
-<%= render 'shared/logo' %>
-<span>DocuSeal</span>
+<% brand_name = !signed_in? && request.path == '/' ? Docuseal.landing_brand_name.presence : nil %>
+<% if brand_name %>
+  <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-base-content text-base-100 text-sm font-bold"><%= brand_name.first %></span>
+  <span><%= brand_name %></span>
+<% else %>
+  <%= render 'shared/logo' %>
+  <span>DocuSeal</span>
+<% end %>

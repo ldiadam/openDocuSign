@@ -46,6 +46,10 @@ Set `APP_URL` and `SECRET_KEY_BASE` in Dokploy's environment. The Compose file r
 
 If you leave it unset, the app generates `/data/docuseal/docuseal.env` on first boot. That file must live on the persistent volume. If the volume is lost, the encryption key is lost with it.
 
+## Landing page branding
+
+`LANDING_BRAND_NAME` controls the brand shown on the public landing page (`/`). The default is `Generic Branding`. Set it to an empty value to use the DocuSeal branding. Signing pages, emails, and certificates use the account name; the DocuSeal attribution footer is not affected.
+
 ## Recovering an old anonymous volume
 
 If data was lost after a redeploy, an old Docker volume may still contain it. On the Dokploy server:

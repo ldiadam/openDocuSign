@@ -1,5 +1,7 @@
+<% landing_brand = !signed_in? && request.path == '/' ? Docuseal.landing_brand_name.presence : nil %>
+<% signing_title = landing_brand ? "#{landing_brand} | Secure Document Signing" : 'DocuSeal | Open Source Document Signing' %>
 <title>
-  <%= turbo_native_app? ? content_for(:native_title) : (content_for(:html_title) || (signed_in? ? 'DocuSeal' : 'DocuSeal | Open Source Document Signing')) %>
+  <%= turbo_native_app? ? content_for(:native_title) : (content_for(:html_title) || (signed_in? ? 'DocuSeal' : signing_title)) %>
 </title>
 <%= render 'shared/meta' %>
 <% if turbo_native_app? %>
