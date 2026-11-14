@@ -2,6 +2,7 @@
 
 class ApplicationController < ActionController::Base
   BROWSER_LOCALE_REGEXP = /\A\w{2}(?:-\w{2})?/
+  EMBEDDABLE_PATH_PREFIXES = %w[/d/ /s/ /e/ /p/].freeze
 
   include ActiveStorage::SetCurrent
   include Pagy::Method
@@ -173,10 +174,25 @@ class ApplicationController < ActionController::Base
       policy.manifest_src :self
       policy.media_src :self
       policy.frame_src :self
+      policy.frame_ancestors(*frame_ancestors_for_request)
       policy.worker_src :self, :blob
       policy.connect_src :self
 
       policy.directives['connect-src'] << 'ws:' if Rails.env.development?
     end
+  end
+
+  def embeddable_request?
+    EMBEDDABLE_PATH_PREFIXES.any? { |prefix| request.path.start_with?(prefix) }
+  end
+
+  def frame_ancestors_for_request
+    return [:self] unless embeddable_request?
+
+    value = ENV['ALLOWED_FRAME_ANCESTORS'].to_s.strip
+
+    return ['*'] if value.blank?
+
+    value.split(',').map(&:strip).reject(&:blank?) + [:self]
   end
 end
