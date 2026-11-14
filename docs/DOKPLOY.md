@@ -25,10 +25,9 @@ Verify inside the container:
 
 ```sh
 ls -l /data/docuseal
-grep " /data " /proc/mounts
 ```
 
-Both should succeed. If `/data` is not a mount, data will not survive the next deployment.
+The authoritative check is Dokploy's **Advanced → Volumes** list: there must be a named volume (not an anonymous one) mounted at `/data`. The Dockerfile's `VOLUME` declaration can create an anonymous volume, but Dokploy does not reuse that across deployments — only an explicitly configured named volume persists.
 
 ### Docker Compose deployment
 

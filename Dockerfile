@@ -111,6 +111,8 @@ ENV VIPS_BLOCK_UNTRUSTED=1
 # ENV LD_PRELOAD=/usr/lib/libjemalloc.so.2
 ENV MALLOC_CONF=dirty_decay_ms:1000,narenas:2,background_thread:true
 
+# Declares the data path. Dokploy must mount a named volume at /data;
+# an anonymous volume is not reused across deployments.
 VOLUME ["/data"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
