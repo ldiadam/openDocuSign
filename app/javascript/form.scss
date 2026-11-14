@@ -73,6 +73,7 @@ button[disabled] .enabled, button.btn-disabled .enabled {
 
 body.embed-mode {
   background: #fff;
+  padding-bottom: 2rem;
 }
 
 body.embed-mode .max-w-md.mx-auto.mt-12 {
@@ -82,9 +83,15 @@ body.embed-mode .max-w-md.mx-auto.mt-12 {
 }
 
 body.embed-mode .embed-attribution {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
   font-size: 0.7rem;
-  padding-top: 0.25rem;
-  padding-bottom: 0.25rem;
+  padding: 6px 8px;
+  background: #fff;
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .font-times {
